@@ -11,7 +11,7 @@ const firebaseConfig = {
   storageBucket: "the-game-93edd.firebasestorage.app",
   messagingSenderId: "770818605932",
   appId: "1:770818605932:web:b7c81e65cd968e2f26a949",
-  databaseURL: "https://the-game-93edd-default-rtdb.firebaseio.com"  // Ensure this URL is correct
+  databaseURL: "https://the-game-93edd-default-rtdb.firebaseio.com"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -22,7 +22,7 @@ const auth = getAuth();
 // Global Variables for Multiplayer Game State
 // ------------------------
 let currentRoomCode = null;
-let currentUserId = null; // will be set after login
+let currentUserId = null; // Will be set after login
 let isHost = false;
 
 let localScore = 0;
@@ -48,6 +48,8 @@ const joinRoomInput = document.getElementById("join-room-code");
 const roomCodeDisplay = document.getElementById("room-code-display");
 const playersList = document.getElementById("players-list");
 const startGameButton = document.getElementById("start-game-button");
+// New: Player Name input
+const playerNameInput = document.getElementById("player-name");
 
 // ------------------------
 // UI Elements for the Quiz Game
@@ -100,7 +102,6 @@ googleLoginButton.addEventListener("click", () => {
     .then((result) => {
       console.log("Logged in as:", result.user.email);
       currentUserId = result.user.uid;
-      // Hide authentication UI and show room lobby
       authDiv.style.display = "none";
       roomSection.style.display = "block";
     })
@@ -159,12 +160,15 @@ const createRoom = () => {
   // Use the logged-in user's UID
   currentUserId = auth.currentUser.uid;
   
+  // Determine player's chosen name:
+  const chosenName = playerNameInput.value.trim() || auth.currentUser.displayName || auth.currentUser.email;
+  
   // Create a room entry in the database using the UID as key
   set(ref(db, "rooms/" + currentRoomCode), {
     host: currentUserId,
     gameState: { status: "waiting", currentQuestionIndex: 0 },
     players: {
-      [currentUserId]: { email: auth.currentUser.email, score: 0 }
+      [currentUserId]: { name: chosenName, email: auth.currentUser.email, score: 0 }
     }
   })
     .then(() => {
@@ -190,8 +194,12 @@ const joinRoom = () => {
     return;
   }
   currentUserId = auth.currentUser.uid;
+  // Determine player's chosen name:
+  const chosenName = playerNameInput.value.trim() || auth.currentUser.displayName || auth.currentUser.email;
+  
   // Add the current user to the room’s players list using their UID
   set(ref(db, "rooms/" + currentRoomCode + "/players/" + currentUserId), {
+    name: chosenName,
     email: auth.currentUser.email,
     score: 0
   })
@@ -218,7 +226,7 @@ const listenToRoom = () => {
       for (let playerKey in roomData.players) {
         const li = document.createElement("li");
         li.textContent =
-          roomData.players[playerKey].email +
+          roomData.players[playerKey].name +
           " - Score: " +
           roomData.players[playerKey].score;
         playersList.appendChild(li);

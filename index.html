@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Multiplayer Quiz Game</title>
+  <style>
+    /* Basic styles: hide sections by default */
+    #auth-section, #room-section, #game-section, #user-info {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>Multiplayer Quiz Game</h1>
+
+  <!-- Authentication Section -->
+  <div id="auth-section">
+    <h2>Login / Sign Up</h2>
+    <div id="auth-forms">
+      <!-- Sign-up Form -->
+      <div id="signup">
+        <input type="email" id="signup-email" placeholder="Email" required />
+        <input type="password" id="signup-password" placeholder="Password" required />
+        <button id="signup-button">Sign Up</button>
+      </div>
+      <!-- Log-in Form -->
+      <div id="login">
+        <input type="email" id="login-email" placeholder="Email" required />
+        <input type="password" id="login-password" placeholder="Password" required />
+        <button id="login-button">Log In</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- User Info and Logout (shown after login) -->
+  <div id="user-info">
+    Logged in as: <span id="user-email"></span>
+    <button id="logout-button">Log Out</button>
+  </div>
+
+  <!-- Room Section: Create or Join a Room -->
+  <div id="room-section">
+    <h2>Room Lobby</h2>
+    <button id="create-room-button">Create Room</button>
+    <div>
+      <input type="text" id="join-room-code" placeholder="Enter Room Code" />
+      <button id="join-room-button">Join Room</button>
+    </div>
+    <div id="room-info">
+      <p>Room Code: <span id="room-code-display"></span></p>
+      <h3>Players:</h3>
+      <ul id="players-list"></ul>
+      <!-- Only the host sees this button -->
+      <button id="start-game-button" style="display:none;">Start Game</button>
+    </div>
+  </div>
+
+  <!-- Game Section -->
+  <div id="game-section">
+    <h2>Quiz Game</h2>
+    <p id="question"></p>
+    <div id="options"></div>
+    <button id="next-button" style="display:none;">Next Question</button>
+    <p>Your Score: <span id="score">0</span></p>
+  </div>
+
+  <!-- Load our JavaScript modules -->
+  <script type="module" src="auth.js"></script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>

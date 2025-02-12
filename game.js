@@ -1,9 +1,9 @@
 // Import Firebase App, Database, and Auth modules from the CDN
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-app.js";
 import { getDatabase, ref, set, onValue, update } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-database.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-auth.js";
+import { getAuth, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/9.8.1/firebase-auth.js";
 
-// Use the same Firebase configuration as in auth.js
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAcOGXy2su-fQkHOue4jj7JdcV0iEgbBqc",
   authDomain: "the-game-93edd.firebaseapp.com",
@@ -14,24 +14,34 @@ const firebaseConfig = {
   databaseURL: "https://the-game-93edd-default-rtdb.firebaseio.com"  // Ensure this URL is correct
 };
 
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth();
 
 // ------------------------
-// Variables for Room and Game State
+// Global Variables for Multiplayer Game State
 // ------------------------
 let currentRoomCode = null;
-let currentUserId = null; // Will use auth.currentUser.uid
+let currentUserId = null; // will be set after login
 let isHost = false;
 
 let localScore = 0;
 let localCurrentQuestionIndex = 0;
 
 // ------------------------
+// UI Elements for Authentication
+// ------------------------
+const googleLoginButton = document.getElementById("google-login");
+const emailLoginBtn = document.getElementById("email-login-btn");
+const emailSignupBtn = document.getElementById("email-signup-btn");
+const emailInput = document.getElementById("email-input");
+const passwordInput = document.getElementById("password-input");
+const authDiv = document.getElementById("auth");
+
+// ------------------------
 // UI Elements for Room Lobby
 // ------------------------
+const roomSection = document.getElementById("room-section");
 const createRoomButton = document.getElementById("create-room-button");
 const joinRoomButton = document.getElementById("join-room-button");
 const joinRoomInput = document.getElementById("join-room-code");
@@ -82,6 +92,59 @@ const generateRoomCode = () => {
 };
 
 // ------------------------
+// Authentication: Google Login
+// ------------------------
+googleLoginButton.addEventListener("click", () => {
+  const provider = new GoogleAuthProvider();
+  signInWithPopup(auth, provider)
+    .then((result) => {
+      console.log("Logged in as:", result.user.email);
+      currentUserId = result.user.uid;
+      // Hide authentication UI and show room lobby
+      authDiv.style.display = "none";
+      roomSection.style.display = "block";
+    })
+    .catch((error) => {
+      console.error("Google Login Error:", error);
+    });
+});
+
+// ------------------------
+// Authentication: Email Login & Sign-Up
+// ------------------------
+emailLoginBtn.addEventListener("click", () => {
+  const email = emailInput.value;
+  const password = passwordInput.value;
+  signInWithEmailAndPassword(auth, email, password)
+    .then((result) => {
+      console.log("Email Login successful:", result.user.email);
+      currentUserId = result.user.uid;
+      authDiv.style.display = "none";
+      roomSection.style.display = "block";
+    })
+    .catch((error) => {
+      console.error("Email Login Error:", error);
+      alert(error.message);
+    });
+});
+
+emailSignupBtn.addEventListener("click", () => {
+  const email = emailInput.value;
+  const password = passwordInput.value;
+  createUserWithEmailAndPassword(auth, email, password)
+    .then((result) => {
+      console.log("Email Sign-Up successful:", result.user.email);
+      currentUserId = result.user.uid;
+      authDiv.style.display = "none";
+      roomSection.style.display = "block";
+    })
+    .catch((error) => {
+      console.error("Email Sign-Up Error:", error);
+      alert(error.message);
+    });
+});
+
+// ------------------------
 // Room Creation and Joining Functions
 // ------------------------
 
@@ -93,8 +156,9 @@ const createRoom = () => {
   }
   currentRoomCode = generateRoomCode();
   isHost = true;
+  // Use the logged-in user's UID
   currentUserId = auth.currentUser.uid;
-
+  
   // Create a room entry in the database using the UID as key
   set(ref(db, "rooms/" + currentRoomCode), {
     host: currentUserId,
@@ -141,7 +205,9 @@ const joinRoom = () => {
     });
 };
 
+// ------------------------
 // Listen for changes in the room data
+// ------------------------
 const listenToRoom = () => {
   const roomRef = ref(db, "rooms/" + currentRoomCode);
   onValue(roomRef, (snapshot) => {
@@ -149,12 +215,12 @@ const listenToRoom = () => {
     if (roomData) {
       // Update players list
       playersList.innerHTML = "";
-      for (let playerId in roomData.players) {
+      for (let playerKey in roomData.players) {
         const li = document.createElement("li");
         li.textContent =
-          roomData.players[playerId].email +
+          roomData.players[playerKey].email +
           " - Score: " +
-          roomData.players[playerId].score;
+          roomData.players[playerKey].score;
         playersList.appendChild(li);
       }
       // If game has started, show the game section
@@ -162,8 +228,8 @@ const listenToRoom = () => {
         localCurrentQuestionIndex = roomData.gameState.currentQuestionIndex;
         loadQuestion();
         gameSection.style.display = "block";
-        // Optionally, hide the room lobby for full-screen game view
-        document.getElementById("room-section").style.display = "none";
+        // Optionally hide the room lobby for full-screen game view
+        roomSection.style.display = "none";
       }
     }
   });

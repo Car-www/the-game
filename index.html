@@ -2,71 +2,127 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Multiplayer Quiz Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600&display=swap" rel="stylesheet">
   <style>
-    /* Basic styles: hide sections by default */
-    #auth-section, #room-section, #game-section, #user-info {
+    body {
+      font-family: 'Baloo 2', cursive;
+      background-color: #2e7d5f;
+      color: #ffffff;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1{
+      color: #c8f4d8;
+      font-size: 50px;
+      font-weight: 600;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    }
+    h2, h3 {
+      color: #c8f4d8;
+      font-size: 35px;
+      font-weight: 600;
+    }
+
+    input, button {
+      font-size: 21px;
+      font-family: 'Baloo 2', cursive;
+      padding: 12px;
+      margin: 10px;
+      border-radius: 10px;
+      border: none;
+    }
+
+    input {
+      background-color: #dff6ea;
+      color: #2e7d5f;
+      border: 3px solid #c8f4d8;
+    }
+
+    button {
+      background-color: #39926a;
+      color: #ffffff;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.1s;
+    }
+
+    button:hover {
+      background-color: #1e7449;
+      transform: scale(1.05);
+    }
+
+    #room-section, #game-section {
       display: none;
+      padding: 20px;
+      background-color: #245847;
+      border-radius: 15px;
+      margin: 20px auto;
+      max-width: 500px;
+      box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    #players-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    #players-list li {
+      background-color: #1b5e40;
+      padding: 12px;
+      margin: 6px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+
+    button.option {
+      display: block;
+      width: 80%;
+      margin: 8px auto;
+      background-color: #2e7d5f;
+      border: 3px solid #c8f4d8;
+    }
+
+    button.option:hover {
+      background-color: #1b5e40;
     }
   </style>
 </head>
 <body>
   <h1>Multiplayer Quiz Game</h1>
 
-  <!-- Authentication Section -->
-  <div id="auth-section">
-    <h2>Login / Sign Up</h2>
-    <div id="auth-forms">
-      <!-- Sign-up Form -->
-      <div id="signup">
-        <input type="email" id="signup-email" placeholder="Email" required />
-        <input type="password" id="signup-password" placeholder="Password" required />
-        <button id="signup-button">Sign Up</button>
-      </div>
-      <!-- Log-in Form -->
-      <div id="login">
-        <input type="email" id="login-email" placeholder="Email" required />
-        <input type="password" id="login-password" placeholder="Password" required />
-        <button id="login-button">Log In</button>
-      </div>
-    </div>
+  <div id="auth">
+    <button id="google-login">Login with Google</button>
+    <br /><br />
+    <h3>Email Login</h3>
+    <input type="email" id="email-input" placeholder="Enter your email" />
+    <input type="password" id="password-input" placeholder="Enter your password" />
+    <br />
+    <button id="email-login-btn">Login with Email</button>
+    <button id="email-signup-btn">Sign Up with Email</button>
   </div>
 
-  <!-- User Info and Logout (shown after login) -->
-  <div id="user-info">
-    Logged in as: <span id="user-email"></span>
-    <button id="logout-button">Log Out</button>
-  </div>
-
-  <!-- Room Section: Create or Join a Room -->
   <div id="room-section">
     <h2>Room Lobby</h2>
+    <input type="text" id="player-name" placeholder="Enter your name (Optional)" />
+    <br /><br />
     <button id="create-room-button">Create Room</button>
-    <div>
-      <input type="text" id="join-room-code" placeholder="Enter Room Code" />
-      <button id="join-room-button">Join Room</button>
-    </div>
-    <div id="room-info">
-      <p>Room Code: <span id="room-code-display"></span></p>
-      <h3>Players:</h3>
-      <ul id="players-list"></ul>
-      <!-- Only the host sees this button -->
-      <button id="start-game-button" style="display:none;">Start Game</button>
-    </div>
+    <input type="text" id="join-room-code" placeholder="Enter Room Code" />
+    <button id="join-room-button">Join Room</button>
+    <p>Room Code: <span id="room-code-display"></span></p>
+    <ul id="players-list"></ul>
+    <button id="start-game-button" style="display: none;">Start Game</button>
   </div>
 
-  <!-- Game Section -->
   <div id="game-section">
     <h2>Quiz Game</h2>
     <p id="question"></p>
     <div id="options"></div>
-    <button id="next-button" style="display:none;">Next Question</button>
-    <p>Your Score: <span id="score">0</span></p>
+    <button id="next-button" style="display: none;">Next Question</button>
+    <p>Score: <span id="score"></span></p>
   </div>
 
-  <!-- Load our JavaScript modules -->
-  <script type="module" src="auth.js"></script>
   <script type="module" src="game.js"></script>
 </body>
 </html>

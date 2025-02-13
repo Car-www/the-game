@@ -265,28 +265,44 @@ const loadQuestion = () => {
   const currentQuestion = questions[localCurrentQuestionIndex];
   questionElement.textContent = currentQuestion.question;
   optionsElement.innerHTML = "";
-  nextButton.style.display = "none";
+  nextButton.style.display = "none"; // Hide the next button initially
   currentQuestion.options.forEach((option) => {
     const btn = document.createElement("button");
     btn.textContent = option;
-    btn.onclick = () => checkAnswer(option);
+    btn.onclick = () => checkAnswer(option, btn); // Pass the button element to disable after answering
     optionsElement.appendChild(btn);
   });
 };
 
 // Check the answer and update the score
-const checkAnswer = (answer) => {
+const checkAnswer = (answer, buttonClicked) => {
   const currentQuestion = questions[localCurrentQuestionIndex];
+  
+  // Disable all the options after answering
+  const allButtons = optionsElement.querySelectorAll("button");
+  allButtons.forEach((btn) => {
+    btn.disabled = true; // Disable the buttons after answer
+  });
+
+  // Show feedback: correct or incorrect
   if (answer === currentQuestion.correctAnswer) {
     localScore++;
     scoreElement.textContent = localScore;
-    // Update the player's score in the database
-    update(ref(db, "rooms/" + currentRoomCode + "/players/" + currentUserId), {
-      score: localScore
-    });
+    buttonClicked.style.backgroundColor = "green"; // Green for correct answer
+    // Automatically move to the next question if correct
+    setTimeout(nextQuestion, 0);  // No delay for correct answer, move to next immediately
+  } else {
+    buttonClicked.style.backgroundColor = "red"; // Red for incorrect answer
+    // Introduce a 2-second delay before moving to the next question
+    setTimeout(nextQuestion, 2000);  // 2-second delay for incorrect answer
   }
-  nextButton.style.display = "block";
+
+  // Update the player's score in the database
+  update(ref(db, "rooms/" + currentRoomCode + "/players/" + currentUserId), {
+    score: localScore
+  });
 };
+
 
 // Host triggers the next question; all players see the update via the database
 const nextQuestion = () => {

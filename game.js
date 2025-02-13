@@ -24,9 +24,9 @@ const auth = getAuth();
 let currentRoomCode = null;
 let currentUserId = null; // Will be set after login
 let isHost = false;
-
 let localScore = 0;
-let localCurrentQuestionIndex = 0;
+let localCurrentQuestionIndex = 0; // Local question index
+let activeQuestions = null; // Will store custom questions if selected
 
 // ------------------------
 // UI Elements for Authentication
@@ -48,8 +48,10 @@ const joinRoomInput = document.getElementById("join-room-code");
 const roomCodeDisplay = document.getElementById("room-code-display");
 const playersList = document.getElementById("players-list");
 const startGameButton = document.getElementById("start-game-button");
-// New: Player Name input
 const playerNameInput = document.getElementById("player-name");
+const customSetDropdown = document.getElementById("custom-set-dropdown");
+const refreshSetsButton = document.getElementById("refresh-sets-button");
+const toggleCustomSetButton = document.getElementById("toggle-custom-set-tool");
 
 // ------------------------
 // UI Elements for the Quiz Game
@@ -61,7 +63,16 @@ const nextButton = document.getElementById("next-button");
 const scoreElement = document.getElementById("score");
 
 // ------------------------
-// Sample Quiz Questions
+// UI Elements for Custom Question Set Creator
+// ------------------------
+const customSetSection = document.getElementById("custom-set-section");
+const customSetTitleInput = document.getElementById("custom-set-title");
+const customQuestionsContainer = document.getElementById("custom-questions-container");
+const addQuestionButton = document.getElementById("add-question-button");
+const saveQuestionSetButton = document.getElementById("save-question-set-button");
+
+// ------------------------
+// Default Quiz Questions
 // ------------------------
 const questions = [
   {
@@ -104,6 +115,7 @@ googleLoginButton.addEventListener("click", () => {
       currentUserId = result.user.uid;
       authDiv.style.display = "none";
       roomSection.style.display = "block";
+      loadCustomSets();
     })
     .catch((error) => {
       console.error("Google Login Error:", error);
@@ -122,6 +134,7 @@ emailLoginBtn.addEventListener("click", () => {
       currentUserId = result.user.uid;
       authDiv.style.display = "none";
       roomSection.style.display = "block";
+      loadCustomSets();
     })
     .catch((error) => {
       console.error("Email Login Error:", error);
@@ -138,6 +151,7 @@ emailSignupBtn.addEventListener("click", () => {
       currentUserId = result.user.uid;
       authDiv.style.display = "none";
       roomSection.style.display = "block";
+      loadCustomSets();
     })
     .catch((error) => {
       console.error("Email Sign-Up Error:", error);
@@ -148,8 +162,6 @@ emailSignupBtn.addEventListener("click", () => {
 // ------------------------
 // Room Creation and Joining Functions
 // ------------------------
-
-// Create a room (host only)
 const createRoom = () => {
   if (!auth.currentUser) {
     alert("You must be logged in to create a room.");
@@ -157,16 +169,13 @@ const createRoom = () => {
   }
   currentRoomCode = generateRoomCode();
   isHost = true;
-  // Use the logged-in user's UID
   currentUserId = auth.currentUser.uid;
   
-  // Determine player's chosen name:
   const chosenName = playerNameInput.value.trim() || auth.currentUser.displayName || auth.currentUser.email;
   
-  // Create a room entry in the database using the UID as key
   set(ref(db, "rooms/" + currentRoomCode), {
     host: currentUserId,
-    gameState: { status: "waiting", currentQuestionIndex: 0 },
+    gameState: { status: "waiting" },
     players: {
       [currentUserId]: { name: chosenName, email: auth.currentUser.email, score: 0 }
     }
@@ -182,7 +191,6 @@ const createRoom = () => {
     });
 };
 
-// Join an existing room
 const joinRoom = () => {
   if (!auth.currentUser) {
     alert("You must be logged in to join a room.");
@@ -194,10 +202,8 @@ const joinRoom = () => {
     return;
   }
   currentUserId = auth.currentUser.uid;
-  // Determine player's chosen name:
   const chosenName = playerNameInput.value.trim() || auth.currentUser.displayName || auth.currentUser.email;
   
-  // Add the current user to the room’s players list using their UID
   set(ref(db, "rooms/" + currentRoomCode + "/players/" + currentUserId), {
     name: chosenName,
     email: auth.currentUser.email,
@@ -225,97 +231,92 @@ const listenToRoom = () => {
       playersList.innerHTML = "";
       for (let playerKey in roomData.players) {
         const li = document.createElement("li");
-        li.textContent =
-          roomData.players[playerKey].name +
-          " - Score: " +
-          roomData.players[playerKey].score;
+        li.textContent = roomData.players[playerKey].name + " - Score: " + roomData.players[playerKey].score;
         playersList.appendChild(li);
       }
-      // If game has started, show the game section
+      // If game has started, show game section
       if (roomData.gameState && roomData.gameState.status === "started") {
-        localCurrentQuestionIndex = roomData.gameState.currentQuestionIndex;
+        activeQuestions = roomData.gameState.customQuestions || null;
         loadQuestion();
         gameSection.style.display = "block";
-        // Optionally hide the room lobby for full-screen game view
         roomSection.style.display = "none";
       }
     }
   });
 };
 
-// Host starts the game by updating the room’s game state
+// ------------------------
+// Host starts the game by updating the room’s game state.
+// If a custom set is selected, load it.
 const startGame = () => {
   if (!isHost) return;
-  update(ref(db, "rooms/" + currentRoomCode + "/gameState"), {
-    status: "started",
-    currentQuestionIndex: 0
-  });
+  const selectedSet = customSetDropdown.value;
+  if (selectedSet && selectedSet !== "default") {
+    const customSetRef = ref(db, `questionSets/${currentUserId}/${selectedSet}`);
+    onValue(customSetRef, (snapshot) => {
+      const setData = snapshot.val();
+      if (setData) {
+        update(ref(db, "rooms/" + currentRoomCode + "/gameState"), {
+          status: "started",
+          customQuestions: setData.questions
+        });
+      } else {
+        update(ref(db, "rooms/" + currentRoomCode + "/gameState"), { status: "started" });
+      }
+    }, { onlyOnce: true });
+  } else {
+    update(ref(db, "rooms/" + currentRoomCode + "/gameState"), { status: "started" });
+  }
 };
 
 // ------------------------
-// Quiz Game Functions (Multiplayer)
+// Quiz Game Functions
 // ------------------------
-
-// Load the current question
 const loadQuestion = () => {
-  if (localCurrentQuestionIndex >= questions.length) {
+  const questionsToUse = activeQuestions || questions;
+  if (localCurrentQuestionIndex >= questionsToUse.length) {
     showResult();
     return;
   }
-  const currentQuestion = questions[localCurrentQuestionIndex];
+  const currentQuestion = questionsToUse[localCurrentQuestionIndex];
   questionElement.textContent = currentQuestion.question;
   optionsElement.innerHTML = "";
-  nextButton.style.display = "none"; // Hide the next button initially
+  nextButton.style.display = "none";
   currentQuestion.options.forEach((option) => {
     const btn = document.createElement("button");
     btn.textContent = option;
-    btn.onclick = () => checkAnswer(option, btn); // Pass the button element to disable after answering
+    btn.onclick = () => checkAnswer(option, btn);
     optionsElement.appendChild(btn);
   });
 };
 
-// Check the answer and update the score
 const checkAnswer = (answer, buttonClicked) => {
-  const currentQuestion = questions[localCurrentQuestionIndex];
+  const questionsToUse = activeQuestions || questions;
+  const currentQuestion = questionsToUse[localCurrentQuestionIndex];
   
-  // Disable all the options after answering
   const allButtons = optionsElement.querySelectorAll("button");
-  allButtons.forEach((btn) => {
-    btn.disabled = true; // Disable the buttons after answer
-  });
-
-  // Show feedback: correct or incorrect
+  allButtons.forEach((btn) => btn.disabled = true);
+  
   if (answer === currentQuestion.correctAnswer) {
     localScore++;
     scoreElement.textContent = localScore;
-    buttonClicked.style.backgroundColor = "green"; // Green for correct answer
-    // Automatically move to the next question if correct
-    setTimeout(nextQuestion, 0);  // No delay for correct answer, move to next immediately
+    buttonClicked.style.backgroundColor = "green";
+    setTimeout(nextQuestion, 0);
   } else {
-    buttonClicked.style.backgroundColor = "red"; // Red for incorrect answer
-    // Introduce a 2-second delay before moving to the next question
-    setTimeout(nextQuestion, 2000);  // 2-second delay for incorrect answer
+    buttonClicked.style.backgroundColor = "red";
+    setTimeout(nextQuestion, 2000);
   }
-
-  // Update the player's score in the database
+  
   update(ref(db, "rooms/" + currentRoomCode + "/players/" + currentUserId), {
     score: localScore
   });
 };
 
-
-// Host triggers the next question; all players see the update via the database
 const nextQuestion = () => {
   localCurrentQuestionIndex++;
-  if (isHost) {
-    update(ref(db, "rooms/" + currentRoomCode + "/gameState"), {
-      currentQuestionIndex: localCurrentQuestionIndex
-    });
-  }
   loadQuestion();
 };
 
-// Show final result when the quiz is over
 const showResult = () => {
   questionElement.textContent = `Game Over! Your final score is ${localScore}`;
   optionsElement.innerHTML = "";
@@ -323,9 +324,101 @@ const showResult = () => {
 };
 
 // ------------------------
-// Event Listeners for Room and Game Actions
+// Custom Question Set Creator Functions
+// ------------------------
+function addCustomQuestion() {
+  const questionIndex = customQuestionsContainer.childElementCount + 1;
+  const questionDiv = document.createElement("div");
+  questionDiv.classList.add("custom-question-block");
+  questionDiv.innerHTML = `
+    <h4>Question ${questionIndex}</h4>
+    <input type="text" class="custom-question-text" placeholder="Enter question" /><br>
+    <input type="text" class="custom-option" placeholder="Option 1" />
+    <input type="text" class="custom-option" placeholder="Option 2" />
+    <input type="text" class="custom-option" placeholder="Option 3" />
+    <input type="text" class="custom-option" placeholder="Option 4" /><br>
+    <input type="text" class="custom-correct-answer" placeholder="Enter correct answer" /><br>
+    <hr>
+  `;
+  customQuestionsContainer.appendChild(questionDiv);
+}
+
+function saveQuestionSet() {
+  const setTitle = customSetTitleInput.value.trim();
+  if (!setTitle) {
+    alert("Please enter a title for your question set.");
+    return;
+  }
+  const questionBlocks = customQuestionsContainer.getElementsByClassName("custom-question-block");
+  let customQuestions = [];
+  for (let block of questionBlocks) {
+    const questionText = block.querySelector(".custom-question-text").value.trim();
+    const optionElements = block.querySelectorAll(".custom-option");
+    let options = [];
+    optionElements.forEach(el => options.push(el.value.trim()));
+    const correctAnswer = block.querySelector(".custom-correct-answer").value.trim();
+    if (!questionText || options.some(o => !o) || !correctAnswer) {
+      alert("Please fill out all fields for each question.");
+      return;
+    }
+    customQuestions.push({
+      question: questionText,
+      options: options,
+      correctAnswer: correctAnswer
+    });
+  }
+  if (customQuestions.length === 0) {
+    alert("Please add at least one question.");
+    return;
+  }
+  set(ref(db, "questionSets/" + currentUserId + "/" + setTitle), {
+    title: setTitle,
+    questions: customQuestions
+  })
+  .then(() => {
+    alert("Your question set was saved!");
+    loadCustomSets();
+  })
+  .catch((error) => {
+    alert("Error saving question set: " + error.message);
+  });
+}
+
+function loadCustomSets() {
+  if (!currentUserId) return;
+  customSetDropdown.innerHTML = '<option value="default">Default Questions</option>';
+  const customSetsRef = ref(db, "questionSets/" + currentUserId);
+  onValue(customSetsRef, (snapshot) => {
+    const sets = snapshot.val();
+    if (sets) {
+      for (let setKey in sets) {
+        const option = document.createElement("option");
+        option.value = setKey;
+        option.textContent = sets[setKey].title;
+        customSetDropdown.appendChild(option);
+      }
+    }
+  });
+}
+
+// ------------------------
+// Toggle Custom Set Creator UI
+// ------------------------
+toggleCustomSetButton.addEventListener("click", () => {
+  if (customSetSection.style.display === "none" || !customSetSection.style.display) {
+    customSetSection.style.display = "block";
+  } else {
+    customSetSection.style.display = "none";
+  }
+});
+
+// ------------------------
+// Event Listeners for Room, Game, and Custom Set Actions
 // ------------------------
 createRoomButton.addEventListener("click", createRoom);
 joinRoomButton.addEventListener("click", joinRoom);
 startGameButton.addEventListener("click", startGame);
 nextButton.addEventListener("click", nextQuestion);
+addQuestionButton.addEventListener("click", addCustomQuestion);
+saveQuestionSetButton.addEventListener("click", saveQuestionSet);
+refreshSetsButton.addEventListener("click", loadCustomSets);

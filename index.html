@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Sploofit</title>
-  <link rel="icon" type="image" href="favicon.png">
+  <link rel="icon" type="image/png" href="/favicon.png">
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600&display=swap" rel="stylesheet">
   <style>
     body {
@@ -14,8 +14,7 @@
       margin: 0;
       padding: 0;
     }
-
-    h1{
+    h1 {
       color: #c8f4d8;
       font-size: 50px;
       font-weight: 600;
@@ -26,8 +25,7 @@
       font-size: 35px;
       font-weight: 600;
     }
-
-    input, button {
+    input, button, select {
       font-size: 21px;
       font-family: 'Baloo 2', cursive;
       padding: 12px;
@@ -35,26 +33,22 @@
       border-radius: 10px;
       border: none;
     }
-
     input {
       background-color: #dff6ea;
       color: #2e7d5f;
       border: 3px solid #c8f4d8;
     }
-
-    button {
+    button, select {
       background-color: #39926a;
       color: #ffffff;
       cursor: pointer;
       transition: background 0.3s, transform 0.1s;
     }
-
-    button:hover {
+    button:hover, select:hover {
       background-color: #1e7449;
       transform: scale(1.05);
     }
-
-    #room-section, #game-section {
+    #room-section, #game-section, #custom-set-section {
       display: none;
       padding: 20px;
       background-color: #245847;
@@ -63,12 +57,10 @@
       max-width: 500px;
       box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
     }
-
     #players-list {
       list-style: none;
       padding: 0;
     }
-
     #players-list li {
       background-color: #1b5e40;
       padding: 12px;
@@ -76,7 +68,6 @@
       border-radius: 8px;
       font-size: 18px;
     }
-
     button.option {
       display: block;
       width: 80%;
@@ -84,17 +75,27 @@
       background-color: #2e7d5f;
       border: 3px solid #c8f4d8;
     }
-
     button.option:hover {
       background-color: #1b5e40;
+    }
+    .custom-question-block {
+      background: #1e7449;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 8px;
+    }
+    .custom-question-block input {
+      width: 80%;
+      margin: 5px 0;
     }
   </style>
 </head>
 <body>
   <h1>Sploofit</h1>
   <h5>(This is the name of the game... for now :/)</h5>
-  <h5>I kind of got carried away with the google login feature so uhh the trivia is just as bad ¯\_(ツ)_/¯</h5>
+  <h5>I kind of got carried away with the Google login feature so uhh the trivia is just as bad ¯\_(ツ)_/¯</h5>
 
+  <!-- Authentication Section -->
   <div id="auth">
     <button id="google-login">Login with Google</button>
     <br /><br />
@@ -106,6 +107,7 @@
     <button id="email-signup-btn">Sign Up with Email</button>
   </div>
 
+  <!-- Room Lobby Section -->
   <div id="room-section">
     <h2>Room Lobby</h2>
     <input type="text" id="player-name" placeholder="Enter your name (Optional)" />
@@ -115,15 +117,35 @@
     <button id="join-room-button">Join Room</button>
     <p>Room Code: <span id="room-code-display"></span></p>
     <ul id="players-list"></ul>
+    <br />
+    <!-- Dropdown to select a custom question set -->
+    <select id="custom-set-dropdown">
+      <option value="default">Default Questions</option>
+    </select>
+    <button id="refresh-sets-button">Refresh Custom Sets</button>
+    <br />
     <button id="start-game-button" style="display: none;">Start Game</button>
+    <br />
+    <!-- Toggle button for the Custom Set Creator -->
+    <button id="toggle-custom-set-tool">Toggle Custom Set Creator</button>
   </div>
 
+  <!-- Quiz Game Section -->
   <div id="game-section">
     <h2>Quiz Game</h2>
     <p id="question"></p>
     <div id="options"></div>
     <button id="next-button" style="display: none;">Next Question</button>
     <p>Score: <span id="score"></span></p>
+  </div>
+
+  <!-- Custom Question Set Creator Section -->
+  <div id="custom-set-section">
+    <h2>Create Custom Question Set</h2>
+    <input type="text" id="custom-set-title" placeholder="Set Title" />
+    <div id="custom-questions-container"></div>
+    <button id="add-question-button">Add Question</button>
+    <button id="save-question-set-button">Save Question Set</button>
   </div>
 
   <script type="module" src="game.js"></script>
